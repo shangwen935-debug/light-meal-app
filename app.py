@@ -36,7 +36,18 @@ if 'menu' not in st.session_state:
         "粒栗皆饭团", 
         "猪肚鸡汤饭",
         "张家小板凳麻辣拌 (自加牛肉少酱版)",
-        "任意轻食外卖"
+        "任意轻食外卖选项1",
+        "任意轻食外卖选项2",
+        "任意轻食外卖选项3",
+        "半斤牛腩一碗饭",
+        "木多森中式健康菜",
+        "麦稻中式健康菜",
+        "竹里清宴中式健康菜",
+        "绿茶餐厅(烤鸡套餐)",
+        "一碗低脂de海南鸡饭",
+        "汕头牛肉饭减脂健康餐",
+        "新式滑蛋饭",
+        "丁丁的茶"
     ]
 if 'decision' not in st.session_state:
     st.session_state.decision = None
@@ -90,4 +101,5 @@ for item in st.session_state.menu:
     with col2:
         if st.button("✖️", key=item, help="删除"):
             remove_food(item)
+
             st.rerun()
