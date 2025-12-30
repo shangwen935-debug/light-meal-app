@@ -3,7 +3,8 @@ import gspread
 from google.oauth2.service_account import Credentials
 import json
 
-def get_google_sheet_data():
+# 👇 注意这里：名字改回了 get_menu_data，这样 app.py 就能认识它了
+def get_menu_data():
     # 1. 定义权限
     scope = [
         "https://www.googleapis.com/auth/spreadsheets",
@@ -20,8 +21,8 @@ def get_google_sheet_data():
         creds = Credentials.from_service_account_info(key_dict, scopes=scope)
         client = gspread.authorize(creds)
 
-        # 4. 尝试打开表格 (最容易报错的一步)
-        # 注意：这里的名字必须和你 Google Drive 里的表格名字一模一样！
+        # 4. 尝试打开表格
+        # ⚠️ 确保表格名字和你 Google Drive 里的一模一样
         sheet = client.open("LightMeal_Menu").sheet1
         
         # 5. 读取数据
@@ -32,5 +33,5 @@ def get_google_sheet_data():
         return data
 
     except Exception as e:
-        # --- 🚨 核心变化：这里会把具体的英文报错直接显示出来 ---
+        # --- 🚨 捕捉并显示具体错误 ---
         return [f"❌ 抓到凶手了: {type(e).__name__}", f"详细信息: {str(e)}"]
