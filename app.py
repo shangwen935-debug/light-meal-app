@@ -1,10 +1,11 @@
 import streamlit as st
 import random
+import google_sheets  # 👈 核心变化：引入了你的新伙伴
 
 # --- 1. 页面配置 ---
-st.set_page_config(page_title="今日轻食", page_icon="🥗", layout="centered")
+st.set_page_config(page_title="今日轻食 v2.0", page_icon="🥗", layout="centered")
 
-# --- 2. CSS 样式 (让界面变圆润优雅) ---
+# --- 2. CSS 样式 (保持不变) ---
 st.markdown("""
     <style>
     .stButton>button {
@@ -26,29 +27,10 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- 3. 数据初始化 ---
+# 注意：这里不再写死菜单，而是问 google_sheets 要数据
 if 'menu' not in st.session_state:
-    # 这里是你定制的“永久”菜单
-    st.session_state.menu = [
-        "南谷稻香中式减脂菜", 
-        "窑鸡王", 
-        "小谷姐姐麻辣拌 (自加牛肉版)", 
-        "广式滋补蒸鸡", 
-        "粒栗皆饭团", 
-        "猪肚鸡汤饭",
-        "张家小板凳麻辣拌 (自加牛肉少酱版)",
-        "任意轻食外卖选项1",
-        "任意轻食外卖选项2",
-        "任意轻食外卖选项3",
-        "半斤牛腩一碗饭",
-        "木多森中式健康菜",
-        "麦稻中式健康菜",
-        "竹里清宴中式健康菜",
-        "绿茶餐厅(烤鸡套餐)",
-        "一碗低脂de海南鸡饭",
-        "汕头牛肉饭减脂健康餐",
-        "新式滑蛋饭",
-        "丁丁的茶"
-    ]
+    st.session_state.menu = google_sheets.get_menu_data()
+    
 if 'decision' not in st.session_state:
     st.session_state.decision = None
 
@@ -59,7 +41,11 @@ def make_choice():
 
 def add_food():
     if st.session_state.new_item:
+        # 1. 先在前端显示出来
         st.session_state.menu.append(st.session_state.new_item)
+        # 2. 调用后台尝试保存 (目前是打印日志，未来这里连接 API)
+        google_sheets.add_new_food(st.session_state.new_item)
+        # 3. 清空输入框
         st.session_state.new_item = "" 
 
 def remove_food(item):
@@ -69,7 +55,7 @@ def remove_food(item):
 
 # --- 5. 界面布局 ---
 st.title("🥗 今天吃点轻盈的？")
-st.caption("把做饭的时间省下来，去写更优雅的代码。")
+st.caption("架构升级版：UI与数据分离") # 改个标题庆祝一下
 
 st.divider()
 
@@ -90,16 +76,14 @@ else:
 st.divider()
 
 # 菜单管理区
-st.subheader("📋 你的菜单")
+st.subheader("📋 你的菜单 (来自后端模块)")
 st.text_input("添加新选项", key="new_item", on_change=add_food, placeholder="输入想吃的，回车添加...")
 
-# 优雅的列表展示
 for item in st.session_state.menu:
     col1, col2 = st.columns([5, 1])
     with col1:
         st.markdown(f"**• {item}**")
     with col2:
-        if st.button("✖️", key=item, help="删除"):
+        if st.button("✖️", key=item):
             remove_food(item)
-
             st.rerun()
