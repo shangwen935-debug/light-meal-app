@@ -2,6 +2,23 @@ import streamlit as st
 import random
 import google_sheets # 引用我们的后端库
 
+# 把这段放在 import 下面
+st.markdown("""
+<style>
+    /* 改变背景颜色 */
+    .stApp {
+        background-color: #f0f2f6;
+    }
+    /* 给所有按钮加个阴影 */
+    div.stButton > button {
+        background-color: #ff4b4b;
+        color: white;
+        border-radius: 20px;
+        box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+    }
+</style>
+""", unsafe_allow_html=True)
+
 st.title("🎲 今天吃点啥？(多人版)")
 
 # --- 1. 让用户输入名字 ---
