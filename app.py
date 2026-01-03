@@ -1,3 +1,4 @@
+import platform
 import streamlit as st
 import google.generativeai as genai
 import os
@@ -8,8 +9,12 @@ import google_sheets # 引用表格库
 # ==========================================
 # 1. 核心配置
 # ==========================================
-os.environ["HTTP_PROXY"] = "http://127.0.0.1:15715"
-os.environ["HTTPS_PROXY"] = "http://127.0.0.1:15715"
+if platform.system() == "Windows":
+    os.environ["HTTP_PROXY"] = "http://127.0.0.1:15715"
+    os.environ["HTTPS_PROXY"] = "http://127.0.0.1:15715"
+    print("🖥️ 检测到 Windows，已开启代理模式")
+else:
+    print("☁️ 检测到 Linux/云端，使用直连模式")
 
 st.set_page_config(page_title="LightMeal 2.1", page_icon="🥗", layout="wide")
 
