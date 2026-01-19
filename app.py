@@ -4,6 +4,7 @@ import os
 from PIL import Image
 import random
 import platform
+import pandas as pd
 import google_sheets # 引用我们的后端库
 
 # ==========================================
@@ -81,11 +82,57 @@ if st.session_state.page_state == "landing":
 with st.sidebar:
     st.title("🥗 LightMeal 助手")
     
+    # ==========================================
+    # 🔐 核心升级：用户门禁系统
+    # ==========================================
+    if "current_user" not in st.session_state:
+        st.session_state.current_user = None
+
+    # 如果未登录，显示登录/注册面板
+    if not st.session_state.current_user:
+        st.info("👋 请先登录以同步你的数据")
+        tab_login, tab_reg = st.tabs(["🔑 登录", "📝 注册"])
+        
+        with tab_login:
+            l_user = st.text_input("用户名", key="login_u")
+            l_pass = st.text_input("密码", type="password", key="login_p")
+            if st.button("登录", type="primary", use_container_width=True):
+                success, msg = google_sheets.login_user(l_user, l_pass)
+                if success:
+                    st.session_state.current_user = l_user
+                    st.rerun()
+                else:
+                    st.error(msg)
+
+        with tab_reg:
+            r_user = st.text_input("新用户名", key="reg_u")
+            r_pass = st.text_input("设置密码", type="password", key="reg_p")
+            if st.button("注册新账号", use_container_width=True):
+                if r_user and r_pass:
+                    success, msg = google_sheets.register_user(r_user, r_pass)
+                    if success:
+                        st.success(msg)
+                    else:
+                        st.error(msg)
+                else:
+                    st.warning("账号密码不能为空")
+        
+        st.divider()
+        st.warning("🔒 请登录后使用功能")
+        st.stop() # 🛑 没登录就停止运行下面的代码
+    
+    # 如果已登录
+    user_name = st.session_state.current_user
+    st.success(f"👤 欢迎, **{user_name}**")
+    if st.button("退出登录", type="secondary"):
+        st.session_state.current_user = None
+        st.rerun()
+    st.divider()
+
     # 导航栏
     page = st.radio(
         "功能导航", 
-        ["🤔 能不能吃? (决策辅助)", "🎲 帮我选饭 (随机)"]
-        ["🤔 能不能吃? (决策辅助)", "🎲 帮我选饭 (随机)", "📊 饮食数据看板"]
+        ["🤔 能不能吃? (决策辅助)", "🎲 帮我选饭 (随机)", "🏆 个人成就 (数据看板)"]
     )
     st.divider()
 
@@ -179,25 +226,6 @@ if page == "🤔 能不能吃? (决策辅助)":
 elif page == "🎲 帮我选饭 (随机)":
     st.title("🎲 今天吃点啥？")
 
-    # --- 身份卡 (门禁系统) ---
-    st.sidebar.markdown("### 👤 你的身份卡")
-    
-    # 💡 改动 1: 默认值改为空字符串 ""，并增加 placeholder 提示
-    user_name = st.sidebar.text_input(
-        "请输入你的昵称/ID", 
-        value="", 
-        placeholder="例如：麦当劳一级爱好者", 
-        help="⚠️ 你的菜单会绑定在这个名字上，下次输入同样的名字就能找回数据。"
-    )
-
-    # 💡 改动 2: 如果名字是空的，直接停止运行后续代码
-    if not user_name:
-        st.warning("👈 请先在左侧输入一个昵称，开启你的专属菜单！")
-        st.info("💡 **为什么要输入昵称？**\n\n我们使用云端数据库保存你的菜单。输入一个独特的 ID，可以防止你的菜单和别人的混在一起。")
-        st.stop() # 🛑 这是一个“红灯”，程序运行到这里就会暂停，直到用户输入名字
-
-    # --- 只有输入了名字，下面的代码才会运行 ---
-    
     # --- 加载数据 ---
     if "menu" not in st.session_state:
         st.session_state.menu = []
@@ -216,8 +244,17 @@ elif page == "🎲 帮我选饭 (随机)":
         st.divider()
         st.write(f"**📋 {user_name} 的菜单 ({len(st.session_state.menu)})**") # 标题也加上名字
         
+        # 显示菜单列表 (带删除按钮)
         for item in st.session_state.menu:
-            st.caption(f"- {item}")
+            c1, c2 = st.columns([4, 1])
+            with c1:
+                st.caption(f"- {item}")
+            with c2:
+                if st.button("✖️", key=f"del_{item}", help="删除此菜品"):
+                    if google_sheets.delete_food(user_name, item):
+                        st.toast(f"🗑️ 已删除 {item}")
+                        st.session_state.menu = google_sheets.get_menu_data(user_name)
+                        st.rerun()
             
         st.markdown("---")
         new_item = st.text_input("📝 加个新菜", key="add_new")
@@ -261,27 +298,70 @@ elif page == "🎲 帮我选饭 (随机)":
 # ==========================================
 # 5. 功能 C：数据看板 (✨ 响应你的需求)
 # ==========================================
-elif page == "📊 饮食数据看板":
-    st.title("📊 你的饮食数据")
+elif page == "🏆 个人成就 (数据看板)":
+    st.title("🏆 你的饮食成就")
     
     # 简单的登录框（复用侧边栏逻辑，或者在这里单独再问一次）
-    query_name = st.text_input("输入昵称查看记录", placeholder="例如：麦当劳一级爱好者")
+    # 直接使用当前登录的用户
+    query_name = user_name
+    st.caption(f"正在查看 **{query_name}** 的数据档案")
     
     if query_name:
         df = google_sheets.get_history_stats(query_name)
         
         if not df.empty:
-            # 1. 关键指标
-            total_meals = len(df)
-            st.metric("累计打卡次数", f"{total_meals} 次")
+            # --- 🎮 游戏化计算 ---
+            xp = len(df) * 10  # 每次打卡 10 XP
+            level = int(xp / 100) + 1
+            next_level_xp = level * 100
+            current_level_xp = xp % 100
             
-            # 2. 最近记录
-            st.subheader("📜 最近记录")
-            st.dataframe(df[["时间", "食物", "标签"]].tail(5), use_container_width=True)
+            # --- 1. 玩家状态栏 ---
+            st.markdown(f"""
+            ### 👤 玩家: **{query_name}**
+            **Lv.{level} 健康美食家** <small>(总经验: {xp})</small>
+            """, unsafe_allow_html=True)
             
-            # 3. 简单的图表 (按标签统计)
-            st.subheader("🍩 饮食分布")
-            chart_data = df["标签"].value_counts()
-            st.bar_chart(chart_data)
+            st.progress(current_level_xp / 100, text=f"距离下一级还差 {100 - current_level_xp} XP")
+            
+            # --- 2. 核心属性 (Metrics) ---
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("🍽️ 累计用餐", f"{len(df)} 次")
+            with col2:
+                # 找出吃得最多的食物
+                top_food = df["食物"].value_counts().idxmax()
+                st.metric("❤️ 本命食物", top_food)
+            with col3:
+                # 找出最多的标签 (AI推荐 vs 随机)
+                fav_style = df["标签"].value_counts().idxmax()
+                clean_style = fav_style.split('-')[0] if '-' in fav_style else fav_style
+                st.metric("🎭 决策流派", clean_style)
+            
+            st.divider()
+            
+            # --- 3. 可视化图表 (装备栏) ---
+            c1, c2 = st.columns(2)
+            
+            with c1:
+                st.subheader("📊 饮食偏好 (Top 5)")
+                # 统计食物出现频率
+                food_counts = df["食物"].value_counts().head(5)
+                st.bar_chart(food_counts, color="#FF4B4B")
+                
+            with c2:
+                st.subheader("⚖️ 决策来源")
+                # 统计标签 (AI vs 随机)
+                tag_counts = df["标签"].value_counts()
+                st.bar_chart(tag_counts, color="#4BFF4B")
+
+            # --- 4. 历史卷轴 ---
+            with st.expander("📜 查看详细历史记录"):
+                st.dataframe(
+                    df[["时间", "食物", "标签"]].sort_values("时间", ascending=False),
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
         else:
-            st.info("还没有数据哦，快去使用其他功能并打卡吧！")
+            st.info("🧊 还没有数据哦，快去使用【AI 决策】或【随机选饭】功能并打卡吧！")
