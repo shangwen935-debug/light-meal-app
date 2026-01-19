@@ -374,11 +374,11 @@ elif page == "🏆 个人成就 (数据看板)":
                 st.metric("🍽️ 累计用餐", f"{len(df)} 次")
             with col2:
                 # 找出吃得最多的食物
-                top_food = df["食物"].value_counts().idxmax()
+                top_food = df["Food"].value_counts().idxmax() # 👈 修正：读取 Food
                 st.metric("❤️ 本命食物", top_food)
             with col3:
                 # 找出最多的标签 (AI推荐 vs 随机)
-                fav_style = df["标签"].value_counts().idxmax()
+                fav_style = df["Tag"].value_counts().idxmax() # 👈 修正：读取 Tag
                 clean_style = fav_style.split('-')[0] if '-' in fav_style else fav_style
                 st.metric("🎭 决策流派", clean_style)
             
@@ -390,19 +390,19 @@ elif page == "🏆 个人成就 (数据看板)":
             with c1:
                 st.subheader("📊 饮食偏好 (Top 5)")
                 # 统计食物出现频率
-                food_counts = df["食物"].value_counts().head(5)
+                food_counts = df["Food"].value_counts().head(5) # 👈 修正
                 st.bar_chart(food_counts, color="#FF4B4B")
                 
             with c2:
                 st.subheader("⚖️ 决策来源")
                 # 统计标签 (AI vs 随机)
-                tag_counts = df["标签"].value_counts()
+                tag_counts = df["Tag"].value_counts() # 👈 修正
                 st.bar_chart(tag_counts, color="#4BFF4B")
 
             # --- 4. 历史卷轴 ---
             with st.expander("📜 查看详细历史记录"):
                 st.dataframe(
-                    df[["时间", "食物", "标签"]].sort_values("时间", ascending=False),
+                    df[["Date", "Time", "Food", "Calories", "Tag", "Comment"]].sort_values("Date", ascending=False), # 👈 修正：显示所有英文列
                     use_container_width=True,
                     hide_index=True
                 )

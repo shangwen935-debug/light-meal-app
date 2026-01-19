@@ -108,7 +108,7 @@ def get_history_stats(user_name):
         
         # 筛选当前用户的数据
         if not df.empty:
-            return df[df["用户"] == user_name]
+            return df[df["User"] == user_name] # 👈 修正：用英文 User 筛选
         return df
     except Exception:
         return pd.DataFrame()
