@@ -188,6 +188,10 @@ with st.sidebar:
 if page == "🤔 能不能吃? (决策辅助)":
     st.title("🤔 帮我看看：这顿能吃吗？")
     
+    # 初始化 session_state 用于暂存 AI 结果
+    if "ai_result_text" not in st.session_state:
+        st.session_state.ai_result_text = None
+
     # 在主界面展示一下刚才选的状态
     if 'status_tags' in locals() and status_tags:
         st.info(f"🎯 当前设定：**{status_text}** + **{diet_goal}**")
@@ -210,27 +214,44 @@ if page == "🤔 能不能吃? (决策辅助)":
                 # 关键点：把“用户状态指令”和“图片”一起发给 AI
                 response = model.generate_content([user_context_instruction, image])
                 
+                # 存入 session_state
+                st.session_state.ai_result_text = response.text
                 status_box.empty()
                 st.success("✅ 评估结束！")
-                st.markdown(response.text)
-                
-                # ✨ 新增：打卡按钮
-                st.divider()
-                st.caption("决定吃这个了吗？记录下来，生成你的饮食图表！")
-                if st.button("📝 记录：我吃了这个", key="log_ai_meal"):
-                    if google_sheets.log_history("访客", "AI评估餐食", "AI决策"):
-                        st.balloons()
-                        st.toast("已记录到云端！请去'数据看板'查看")
                 
             except Exception as e:
                 status_box.empty()
                 st.error(f"❌ 出错啦：{e}")
+
+    # --- 如果有分析结果，显示结果和录入表单 ---
+    if st.session_state.ai_result_text:
+        st.markdown(st.session_state.ai_result_text)
+        
+        st.divider()
+        with st.container(border=True):
+            st.markdown("### 📝 饮食打卡")
+            c1, c2 = st.columns(2)
+            ai_cal = c1.number_input("预估热量 (kcal)", min_value=0, step=10, help="根据 AI 的分析填入大概数值")
+            ai_note = c2.text_input("备注", placeholder="例如：没吃米饭，只吃了菜")
+            
+            if st.button("✅ 确认记录", type="primary", use_container_width=True):
+                current_user = user_name if user_name else "访客"
+                if google_sheets.log_history(current_user, "AI评估餐食", "AI决策", calories=ai_cal, comment=st.session_state.ai_result_text + f"\n用户备注: {ai_note}"):
+                    st.balloons()
+                    st.success(f"已记录！热量: {ai_cal} kcal")
+                    # 清空状态，准备下一次
+                    st.session_state.ai_result_text = None
+                    st.rerun()
 
 # ==========================================
 # 4. 功能 B：帮我选饭 (✨ 这里的逻辑升级了！)
 # ==========================================
 elif page == "🎲 帮我选饭 (随机)":
     st.title("🎲 今天吃点啥？")
+
+    # 初始化 session_state 用于暂存随机结果
+    if "random_choice" not in st.session_state:
+        st.session_state.random_choice = None
 
     # --- 加载数据 ---
     if "menu" not in st.session_state:
@@ -286,20 +307,37 @@ elif page == "🎲 帮我选饭 (随机)":
         with col2:
             st.write("\n\n")
             if st.button("🎲 帮我决定！", type="primary", use_container_width=True):
-                choice = random.choice(st.session_state.menu)
-                st.balloons()
-                st.markdown(f"""
-                <div style="text-align: center; padding: 20px; background-color: #f0f2f6; border-radius: 10px;">
-                    <h3>🤖 AI 建议你吃：</h3>
-                    <h1 style="color: #ff4b4b; font-size: 50px;">{choice}</h1>
-                </div>
-                """, unsafe_allow_html=True)
+                st.session_state.random_choice = random.choice(st.session_state.menu)
+                st.rerun() # 刷新页面以显示结果
+
+        # --- 如果有随机结果，显示结果卡片和录入表单 ---
+        if st.session_state.random_choice:
+            choice = st.session_state.random_choice
+            
+            st.markdown(f"""
+            <div style="text-align: center; padding: 20px; background-color: #f0f2f6; border-radius: 10px; margin-bottom: 20px;">
+                <h3>🤖 AI 建议你吃：</h3>
+                <h1 style="color: #ff4b4b; font-size: 50px;">{choice}</h1>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            with st.container(border=True):
+                st.markdown("### 📝 决定吃这个了？完善一下数据吧")
+                c1, c2 = st.columns(2)
+                r_cal = c1.number_input("预估热量 (kcal)", min_value=0, step=50, key="r_cal")
+                r_note = c2.text_input("备注", placeholder="例如：去皮吃，少放辣", key="r_note")
                 
-                # ✨ 新增：随机选饭的打卡
-                st.write("\n")
-                if st.button(f"📝 就吃它了！({choice})", type="secondary", use_container_width=True):
-                    if google_sheets.log_history(user_name, choice, "随机-选中"):
+                if st.button("✅ 确认打卡", type="primary", use_container_width=True):
+                    if google_sheets.log_history(user_name, choice, "随机-选中", calories=r_cal, comment=r_note):
+                        st.balloons()
                         st.toast(f"已记录：{choice}")
+                        # 清空选择
+                        st.session_state.random_choice = None
+                        st.rerun()
+            
+            if st.button("🔄 不想吃这个，重选", use_container_width=True):
+                st.session_state.random_choice = None
+                st.rerun()
 
 # ==========================================
 # 5. 功能 C：数据看板 (✨ 响应你的需求)

@@ -30,7 +30,7 @@ def get_sheet_url():
 def get_menu_data(user_name):
     try:
         client = get_client()
-        sheet = client.open("LightMeal_Menu").sheet1
+        sheet = client.open("LightMeal_Menu").worksheet("Menu") # 👈 修正：指定读取 Menu 表
         
         # 👇 改动：不再只读第一列，而是读取所有数据
         all_records = sheet.get_all_values()
@@ -54,7 +54,7 @@ def get_menu_data(user_name):
 def add_new_food(user_name, food_name):
     try:
         client = get_client()
-        sheet = client.open("LightMeal_Menu").sheet1
+        sheet = client.open("LightMeal_Menu").worksheet("Menu") # 👈 修正：写入 Menu 表
         
         # 👇 改动：写入的时候，把名字和菜名一起打包发过去
         sheet.append_row([user_name, food_name])
@@ -64,7 +64,7 @@ def add_new_food(user_name, food_name):
         return False
 
 # --- 4. ✨ 新增：历史打卡记录 ---
-def log_history(user_name, food_name, tag, comment=""):
+def log_history(user_name, food_name, tag, calories=0, comment=""):
     """
     记录用户的饮食行为
     tag: 例如 'AI推荐-推荐吃', 'AI推荐-慎吃', '随机-选中'
@@ -77,13 +77,17 @@ def log_history(user_name, food_name, tag, comment=""):
         try:
             worksheet = sh.worksheet("History")
         except:
-            # 如果找不到 History 表，就创建一个新的
-            worksheet = sh.add_worksheet(title="History", rows="1000", cols="5")
-            worksheet.append_row(["时间", "用户", "食物", "标签", "备注"]) # 表头
+            # 如果找不到，按你的结构创建
+            worksheet = sh.add_worksheet(title="History", rows="1000", cols="7")
+            worksheet.append_row(["Date", "Time", "User", "Food", "Calories", "Tag", "Comment"])
             
-        # 写入数据：时间戳, 用户, 食物, 标签
-        time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        worksheet.append_row([time_str, user_name, food_name, tag, comment])
+        # 写入数据：拆分 Date 和 Time，加入 Calories
+        now = datetime.now()
+        date_str = now.strftime("%Y-%m-%d")
+        time_str = now.strftime("%H:%M:%S")
+        
+        # 对应列：Date, Time, User, Food, Calories, Tag, Comment
+        worksheet.append_row([date_str, time_str, user_name, food_name, calories, tag, comment])
         return True
     except Exception as e:
         st.error(f"打卡失败: {e}")
@@ -113,7 +117,7 @@ def get_history_stats(user_name):
 def delete_food(user_name, food_name):
     try:
         client = get_client()
-        sheet = client.open("LightMeal_Menu").sheet1
+        sheet = client.open("LightMeal_Menu").worksheet("Menu") # 👈 修正：在 Menu 表删除
         
         # 获取所有数据来查找匹配的行
         all_records = sheet.get_all_values()
