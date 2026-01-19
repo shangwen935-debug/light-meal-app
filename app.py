@@ -128,11 +128,6 @@ with st.sidebar:
         st.session_state.current_user = None
         st.rerun()
         
-    # ✨ 调试工具：显示表格链接 (防止写错文件)
-    if st.sidebar.checkbox("🔧 调试：查看表格位置"):
-        url = google_sheets.get_sheet_url()
-        st.sidebar.info(f"🔗 代码正在连接的表格：\n\n[点击打开]({url})")
-        
     st.divider()
 
     # 导航栏
@@ -359,33 +354,40 @@ elif page == "🏆 个人成就 (数据看板)":
                 if col not in df.columns:
                     df[col] = "未知" if col == "Tag" else ""
 
+            # ✨ 小动画：弹出提示
+            st.toast(f"已同步 {query_name} 的最新数据！", icon="🚀")
+
             # --- 🎮 游戏化计算 ---
             xp = len(df) * 10  # 每次打卡 10 XP
             level = int(xp / 100) + 1
             next_level_xp = level * 100
             current_level_xp = xp % 100
             
-            # --- 1. 玩家状态栏 ---
-            st.markdown(f"""
-            ### 👤 玩家: **{query_name}**
-            **Lv.{level} 健康美食家** <small>(总经验: {xp})</small>
-            """, unsafe_allow_html=True)
-            
-            st.progress(current_level_xp / 100, text=f"距离下一级还差 {100 - current_level_xp} XP")
+            # --- 1. 玩家状态栏 (UI 优化版) ---
+            with st.container(border=True):
+                c_avatar, c_info = st.columns([1, 4])
+                with c_avatar:
+                    st.markdown("<div style='font-size: 60px; text-align: center;'>🦸</div>", unsafe_allow_html=True)
+                with c_info:
+                    st.subheader(f"{query_name}")
+                    st.caption(f"🏅 Lv.{level} 健康美食家 | ✨ 总经验: {xp} XP")
+                    # 进度条
+                    st.progress(current_level_xp / 100, text=f"🔥 冲鸭！距离下一级还差 {100 - current_level_xp} XP")
             
             # --- 2. 核心属性 (Metrics) ---
+            st.write("") # 空一行
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.metric("🍽️ 累计用餐", f"{len(df)} 次")
+                st.metric("🍽️ 累计用餐", f"{len(df)} 次", delta="坚持记录")
             with col2:
                 # 找出吃得最多的食物
                 top_food = df["Food"].value_counts().idxmax() # 👈 修正：读取 Food
-                st.metric("❤️ 本命食物", top_food)
+                st.metric("❤️ 本命食物", top_food, delta="真爱")
             with col3:
                 # 找出最多的标签 (AI推荐 vs 随机)
                 fav_style = df["Tag"].value_counts().idxmax() # 👈 修正：读取 Tag
                 clean_style = fav_style.split('-')[0] if '-' in fav_style else fav_style
-                st.metric("🎭 决策流派", clean_style)
+                st.metric("🎭 决策流派", clean_style, delta="风格")
             
             st.divider()
             
@@ -396,13 +398,15 @@ elif page == "🏆 个人成就 (数据看板)":
                 st.subheader("📊 饮食偏好 (Top 5)")
                 # 统计食物出现频率
                 food_counts = df["Food"].value_counts().head(5) # 👈 修正
-                st.bar_chart(food_counts, color="#FF4B4B")
+                # 🎨 优化配色：使用温暖的橙色代替刺眼的红
+                st.bar_chart(food_counts, color="#FF9F36")
                 
             with c2:
                 st.subheader("⚖️ 决策来源")
                 # 统计标签 (AI vs 随机)
                 tag_counts = df["Tag"].value_counts() # 👈 修正
-                st.bar_chart(tag_counts, color="#4BFF4B")
+                # 🎨 优化配色：使用专业的蓝色代替刺眼的绿
+                st.bar_chart(tag_counts, color="#36A2EB")
 
             # --- 4. 历史卷轴 ---
             with st.expander("📜 查看详细历史记录"):
