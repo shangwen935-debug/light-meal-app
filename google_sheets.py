@@ -17,6 +17,15 @@ def get_client():
     creds = Credentials.from_service_account_info(key_dict, scopes=scope)
     return gspread.authorize(creds)
 
+# --- 1.5 🔧 调试辅助：获取表格 URL ---
+def get_sheet_url():
+    try:
+        client = get_client()
+        sh = client.open("LightMeal_Menu")
+        return sh.url
+    except Exception as e:
+        return f"连接错误: {e}"
+
 # --- 2. 读取菜单函数 ---
 def get_menu_data(user_name):
     try:

@@ -127,6 +127,12 @@ with st.sidebar:
     if st.button("退出登录", type="secondary"):
         st.session_state.current_user = None
         st.rerun()
+        
+    # ✨ 调试工具：显示表格链接 (防止写错文件)
+    if st.sidebar.checkbox("🔧 调试：查看表格位置"):
+        url = google_sheets.get_sheet_url()
+        st.sidebar.info(f"🔗 代码正在连接的表格：\n\n[点击打开]({url})")
+        
     st.divider()
 
     # 导航栏
