@@ -354,6 +354,11 @@ elif page == "🏆 个人成就 (数据看板)":
         df = google_sheets.get_history_stats(query_name)
         
         if not df.empty:
+            # --- 🛡️ 容错处理：补全缺失列 (防止表格表头不全导致报错) ---
+            for col in ["Date", "Time", "Food", "Calories", "Tag", "Comment"]:
+                if col not in df.columns:
+                    df[col] = "未知" if col == "Tag" else ""
+
             # --- 🎮 游戏化计算 ---
             xp = len(df) * 10  # 每次打卡 10 XP
             level = int(xp / 100) + 1
