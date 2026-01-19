@@ -29,7 +29,12 @@ def get_menu_data(user_name):
         # 👇 新增：过滤逻辑
         # 意思是：如果第一列(A列)的名字等于 user_name，就把第二列(B列)的菜取出来
         # all_records[1:] 是为了跳过第一行表头
-        my_menu = [row[1] for row in all_records[1:] if len(row) > 1 and row[0] == user_name]
+        my_menu = []
+        for row in all_records[1:]:
+            # 兼容性检查：确保这一行至少有2列数据，且第一列不为空
+            if len(row) >= 2 and row[0] == user_name:
+                if row[1].strip(): # 确保菜名不是空的
+                    my_menu.append(row[1])
             
         return my_menu
     except Exception as e:
@@ -50,7 +55,7 @@ def add_new_food(user_name, food_name):
         return False
 
 # --- 4. ✨ 新增：历史打卡记录 ---
-def log_history(user_name, food_name, tag):
+def log_history(user_name, food_name, tag, comment=""):
     """
     记录用户的饮食行为
     tag: 例如 'AI推荐-推荐吃', 'AI推荐-慎吃', '随机-选中'
@@ -63,12 +68,13 @@ def log_history(user_name, food_name, tag):
         try:
             worksheet = sh.worksheet("History")
         except:
+            # 如果找不到 History 表，就创建一个新的
             worksheet = sh.add_worksheet(title="History", rows="1000", cols="5")
             worksheet.append_row(["时间", "用户", "食物", "标签", "备注"]) # 表头
             
         # 写入数据：时间戳, 用户, 食物, 标签
         time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        worksheet.append_row([time_str, user_name, food_name, tag, ""])
+        worksheet.append_row([time_str, user_name, food_name, tag, comment])
         return True
     except Exception as e:
         st.error(f"打卡失败: {e}")
