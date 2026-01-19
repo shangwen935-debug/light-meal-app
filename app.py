@@ -85,6 +85,7 @@ with st.sidebar:
     page = st.radio(
         "功能导航", 
         ["🤔 能不能吃? (决策辅助)", "🎲 帮我选饭 (随机)"]
+        ["🤔 能不能吃? (决策辅助)", "🎲 帮我选饭 (随机)", "📊 饮食数据看板"]
     )
     st.divider()
 
@@ -159,6 +160,14 @@ if page == "🤔 能不能吃? (决策辅助)":
                 status_box.empty()
                 st.success("✅ 评估结束！")
                 st.markdown(response.text)
+                
+                # ✨ 新增：打卡按钮
+                st.divider()
+                st.caption("决定吃这个了吗？记录下来，生成你的饮食图表！")
+                if st.button("📝 记录：我吃了这个", key="log_ai_meal"):
+                    if google_sheets.log_history("访客", "AI评估餐食", "AI决策"):
+                        st.balloons()
+                        st.toast("已记录到云端！请去'数据看板'查看")
                 
             except Exception as e:
                 status_box.empty()
@@ -242,3 +251,37 @@ elif page == "🎲 帮我选饭 (随机)":
                     <h1 style="color: #ff4b4b; font-size: 50px;">{choice}</h1>
                 </div>
                 """, unsafe_allow_html=True)
+                
+                # ✨ 新增：随机选饭的打卡
+                st.write("\n")
+                if st.button(f"📝 就吃它了！({choice})", type="secondary", use_container_width=True):
+                    if google_sheets.log_history(user_name, choice, "随机-选中"):
+                        st.toast(f"已记录：{choice}")
+
+# ==========================================
+# 5. 功能 C：数据看板 (✨ 响应你的需求)
+# ==========================================
+elif page == "📊 饮食数据看板":
+    st.title("📊 你的饮食数据")
+    
+    # 简单的登录框（复用侧边栏逻辑，或者在这里单独再问一次）
+    query_name = st.text_input("输入昵称查看记录", placeholder="例如：麦当劳一级爱好者")
+    
+    if query_name:
+        df = google_sheets.get_history_stats(query_name)
+        
+        if not df.empty:
+            # 1. 关键指标
+            total_meals = len(df)
+            st.metric("累计打卡次数", f"{total_meals} 次")
+            
+            # 2. 最近记录
+            st.subheader("📜 最近记录")
+            st.dataframe(df[["时间", "食物", "标签"]].tail(5), use_container_width=True)
+            
+            # 3. 简单的图表 (按标签统计)
+            st.subheader("🍩 饮食分布")
+            chart_data = df["标签"].value_counts()
+            st.bar_chart(chart_data)
+        else:
+            st.info("还没有数据哦，快去使用其他功能并打卡吧！")
